@@ -1,0 +1,74 @@
+name: Multi-Platform Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build Executable (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        pyinstaller --onefile --windowed --icon=logo.ico --name="WhatsApp Automation Studio" whatsapp_msg_automation.py
+
+    - name: Build Executable (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        pyinstaller --onefile --windowed --name="WhatsApp Automation Studio" whatsapp_msg_automation.py
+
+    - name: Copy Assets (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        if (Test-Path assets) {
+          mkdir dist/assets -Force
+          Copy-Item -Path assets/* -Destination dist/assets/ -Recurse -Force
+        }
+
+    - name: Copy Assets (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        if [ -d "assets" ]; then
+          mkdir -p dist/assets
+          cp -r assets/* dist/assets/
+        fi
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhatsApp-Automation-Studio-${{ matrix.os }}
+        path: dist/
+
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/WhatsApp Automation Studio.exe
+          dist/WhatsApp Automation Studio.app
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
