@@ -51,3 +51,7 @@ venv/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Node modules
+node_modules/
+**/node_modules/
